@@ -8,4 +8,4 @@ Goal: To segment product names.
 ## ws_train.py
 This file fine-tunes [the model](<https://huggingface.co/ckiplab/bert-base-chinese-ws>) from HuggingFace.
 ## ws_test.py
-This file demonstrates how to use the tuned model directly and the results.
+This file demonstrates how to use the tuned model directly and shows the results.
