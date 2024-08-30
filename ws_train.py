@@ -35,7 +35,7 @@ model = AutoModelForTokenClassification.from_pretrained('ckiplab/bert-base-chine
 
 label_list = ["B", "I"]
 
-def tokenize_and_align_labels(examples):
+def tokenize_and_align_labels(examples, tokenizer):
     tokenized_inputs = tokenizer(examples['tokens'], is_split_into_words=True, truncation=True, padding='max_length')
     labels = []
     for i, label in enumerate(examples['labels']):
@@ -54,7 +54,7 @@ def tokenize_and_align_labels(examples):
     tokenized_inputs["labels"] = labels
     return tokenized_inputs
 
-tokenized_datasets = datasets.map(tokenize_and_align_labels, batched=True)
+tokenized_datasets = datasets.map(lambda examples: tokenize_and_align_labels(examples, tokenizer), batched=True)
 
 def compute_metrics(p):
     predictions, labels = p
@@ -116,8 +116,7 @@ logging.info("Finish training.")
 existing_model = AutoModelForTokenClassification.from_pretrained("./best_model")
 existing_tokenizer = BertTokenizerFast.from_pretrained("./best_model")
 
-tokenized_test_dataset = test_dataset.map(lambda examples: existing_tokenizer(examples['tokens'], is_split_into_words=True, padding='max_length', truncation=True), batched=True)
-tokenized_test_dataset = tokenized_test_dataset.map(tokenize_and_align_labels, batched=True)
+existing_tokenized_test_dataset = test_dataset.map(lambda examples: tokenize_and_align_labels(examples, existing_tokenizer), batched=True)
 
 trainer_existing = Trainer(
     model=existing_model,
@@ -130,16 +129,15 @@ logging.info("Evaluating existing best model on test dataset.")
 existing_results = trainer_existing.evaluate()
 
 # 測試新訓練的模型
-temp_model = AutoModelForTokenClassification.from_pretrained("./temp_model")
-temp_tokenizer = BertTokenizerFast.from_pretrained("./temp_model")
+new_model = AutoModelForTokenClassification.from_pretrained("./temp_model")
+new_tokenizer = BertTokenizerFast.from_pretrained("./temp_model")
 
-tokenized_test_dataset_temp = test_dataset.map(lambda examples: temp_tokenizer(examples['tokens'], is_split_into_words=True, padding='max_length', truncation=True), batched=True)
-tokenized_test_dataset_temp = tokenized_test_dataset_temp.map(tokenize_and_align_labels, batched=True)
+new_tokenized_test_dataset = test_dataset.map(lambda examples: tokenize_and_align_labels(examples, new_tokenizer), batched=True)
 
 trainer_new = Trainer(
-    model=temp_model,
+    model=new_model,
     args=training_args,
-    eval_dataset=tokenized_test_dataset_temp,
+    eval_dataset=new_tokenized_test_dataset,
     compute_metrics=compute_metrics
 )
 
